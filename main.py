@@ -16,16 +16,20 @@ import json
 
 import spotipy #ALL
 from spotipy.oauth2 import SpotifyOAuth #OAuth
-import os #OAuth
-import os.path #OAuth
-from dotenv import load_dotenv #OAuth
-
-load_dotenv('local.env')
+import os
+import os.path
+from configparser import ConfigParser
+  
+config = ConfigParser()
+config.read("config.ini")
 
 scope = "user-follow-read, user-top-read, playlist-modify-private, playlist-read-private, playlist-read-collaborative"
-client_id = "44d67a7e446a4f6686640f0cbfc5b11b" #enter spotify developer portal api info here
-client_secret = os.environ['CLIENT_SECRET']
-sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=scope, client_id=client_id, client_secret = client_secret,redirect_uri="http://localhost:1084"), requests_timeout=10, retries=10)
+client_id = config.get("spotify", "client_id")
+client_secret = config.get("spotify", "client_secret")
+sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=scope, client_id=client_id, client_secret = client_secret, redirect_uri="http://localhost:1084"), requests_timeout=10, retries=10)
+
+#print(f"Spotify client id: {client_id}")
+#print(f"Spotify client secret: {client_secret}")
 
 ##################################################################################
 #    Recent Releases by followed artists playlist generation
@@ -198,28 +202,33 @@ def generate_weekly_playlist():
 ####################################################################
 
 def get_playlist_id(playlist_name):
+    print(f"Retrieving playlist {playlist_name}...")
     x=0
     #user_playlists = []
     got_all_playlists = False
     #playlist_names = []
     while not got_all_playlists:
+        print("Retrieving 50 playlists...")
         user_playlists = sp.current_user_playlists(limit=50, offset=x)
+        print("Retrieved playlists")
         x+=50
         if not user_playlists['items']:
             got_all_playlists = True
         else:
             for playlist in user_playlists['items']:
                 if playlist['name'] == playlist_name:
-                    #print(playlist)
+                    print(playlist)
                     return playlist['id']
 
 
 def get_playlist_track_uris(playlist_id):
     playlist_track_uris = []
     playlist_tracks = sp.playlist(playlist_id, fields=None, market='US')
+    print(f"Retrieving {len(playlist_tracks['tracks'])} uris...")
     for track in playlist_tracks['tracks']['items']:
-        #print(track)
+        print(track)
         playlist_track_uris.append(track['track']['id'])
+    print("Retrieved uris")
     return playlist_track_uris
 
 
@@ -229,15 +238,17 @@ def get_monday_date(d=date.today()):
 
 
 def create_discover_weekly_backup():
-    playlist_id = get_playlist_id("Discover Weekly")
+    playlist_id = get_playlist_id('Discover Weekly')
     playlist_track_uris = get_playlist_track_uris(playlist_id)
     monday = get_monday_date()
     playlist_name = f'DW {monday}'
+    print(f"Creating playlist {playlist_name}")
     user_id = sp.me()['id']
     new_playlist = sp.user_playlist_create(user_id, playlist_name, public=False, collaborative=False, description= f'Discover Weekly backup for {monday} release.')
     all_items_on_playlist = int(len(playlist_track_uris) / 100) + ((len(playlist_track_uris) % 100) > 0)
     for i in range(0, all_items_on_playlist):
         sp.playlist_add_items(new_playlist['id'], playlist_track_uris[100*i:100*(i+1)], position=None)
+    print("Created playlist")
 
 ##########################################################################################
 ##########################################################################################

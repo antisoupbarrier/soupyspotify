@@ -1,8 +1,14 @@
+# configs
 local.env
+config.ini
+
+# caches
 album_cache.json
 track_cache.json
 followed_artist_cache.json
+
+# misc
 sql.py
 .cache
-rsbpi/features
 **/__pycache__
+
